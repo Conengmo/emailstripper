@@ -2,6 +2,7 @@ import mailbox
 import email.mime.text
 import os
 import datetime as dt
+import dateutil.parser
 import re
 
 
@@ -46,12 +47,16 @@ def get_replace_text(attachment_name, content_size):
 
 def get_storage_filename(msg, attachment_name):
     """Return a string that can be used as filename for storing the attachment."""
-    date = dt.datetime.strptime(msg['Date'], '%a, %d %b %Y %H:%M:%S %z')
+    try:
+        date = dt.datetime.strptime(msg['Date'], '%a, %d %b %Y %H:%M:%S %z')
+    except ValueError:
+        date = dateutil.parser.parse(msg['Date'])
     date_str = date.strftime('%Y%m%dT%H%M')
     # Assume there is an email address in there:
     from_address = re.search(r'([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)', msg['From']).group(0)
     res = '{} from-{} {}'.format(date_str, from_address, attachment_name)
-    return res
+    # Replace characters not suitable for a filename:
+    return re.sub(r'[<>:"\/\|\?\*\t\n\r\0]', r'-', res)
 
 
 def main(path):
@@ -81,8 +86,6 @@ def main(path):
             mbox.flush()
             mbox.close()
         print('Removed {} attachments from {}.'.format(count, filename))
-        if filename.startswith('Cator'):
-            raise RuntimeError()
 
 
 if __name__ == '__main__':
