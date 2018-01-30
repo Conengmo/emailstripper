@@ -28,10 +28,10 @@ def get_attachment_name(dispositions):
         return None
 
 
-def store_attachment(part, msg, attachment_name, filename):
+def store_attachment(part, msg, attachment_name, filename, base_path):
     store_filename = get_storage_filename(msg, attachment_name)
     store_folder = filename.rstrip('.mbox') + ' attachments'
-    path = os.path.join('..', store_folder)
+    path = os.path.join(base_path, store_folder)
     if not os.path.exists(path):
         os.makedirs(path)
     content = part.get_payload(decode=True)
@@ -54,8 +54,7 @@ def get_storage_filename(msg, attachment_name):
     return res
 
 
-def main():
-    path = '..'
+def main(path):
     for filename in os.listdir(path):
         if not filename.endswith('.mbox'):
             continue
@@ -72,7 +71,7 @@ def main():
                     content_size, attachment_name = parse_attachment(part)
                     if content_size is not None and content_size > 100e3:
                         print('Removing attachment {} with size {:.0f} kB.'.format(attachment_name, content_size / 1e3))
-                        store_attachment(part, msg, attachment_name, filename)
+                        store_attachment(part, msg, attachment_name, filename, path)
                         payload = msg.get_payload()
                         payload[i] = get_replace_text(attachment_name, content_size)
                         msg.set_payload(payload)
