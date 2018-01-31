@@ -4,7 +4,10 @@ Extract attachments from local mbox files.
 
 The goal is to reduce the size of the mbox file and store attachments you want to keep separately.
 
-Python code that:
+My use case is preparing the mbox files I got from Gmail with Google Takeout for storage. I extract the attachments and
+remove those I don't need to keep.
+
+The code is written in Python and it:
 - walks over mbox files in a directory
 - walks over messages in an mbox file
 - finds attachments larger than a certain size (currently 200 kB hardcoded)
