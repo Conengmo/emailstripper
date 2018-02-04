@@ -39,27 +39,16 @@ def main(path, filename=None):
 
 def parse_attachment(part):
     """Parse the message part and find whether it's an attachment."""
-    content_disposition = part.get("Content-Disposition", None)
-    if not content_disposition:
+    if not part.get_content_disposition() in ['inline', 'attachment']:
         return None, None
-    dispositions = content_disposition.strip().split(";")
-    if not bool(content_disposition and dispositions[0].lower() == "attachment"):
+    attachment_name = part.get_filename()
+    if attachment_name.endswith('.eml'):
+        print('Storing .eml files not supported, skipping {}.'.format(attachment_name))
         return None, None
     content = part.get_payload()
+    assert type(content) is str
     content_size = len(content)
-    attachment_name = get_attachment_name(dispositions)
     return content_size, attachment_name
-
-
-def get_attachment_name(dispositions):
-    """Parse the attachment filename from the email."""
-    for param in dispositions[1:]:
-        needle = 'filename'
-        if needle in param.lower():
-            start = param.lower().find(needle) + len(needle) + 1
-            return param[start:].strip('"')
-    else:
-        return None
 
 
 def store_attachment(part, msg, attachment_name, filename, base_path):
