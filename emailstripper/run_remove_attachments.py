@@ -6,9 +6,10 @@ import dateutil.parser
 import re
 
 
-def main(path):
-    """Extract, store and remove attachments from mbox files in path."""
-    for filename in os.listdir(path):
+def main(path, filename=None):
+    """Extract, store and remove attachments from all or a single mbox file in path."""
+    iterator = [filename] if filename is not None else os.listdir(path)
+    for filename in iterator:
         if not filename.endswith('.mbox'):
             continue
         count = 0
