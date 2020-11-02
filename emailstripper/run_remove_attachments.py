@@ -42,10 +42,9 @@ def walk_over_parts(parent, count, path, filename, msg_date, msg_from):
             continue
         if part.is_multipart():
             count = walk_over_parts(part, count, path, filename, msg_date, msg_from)
-            # return count
             continue
         content_size, attachment_name = parse_attachment(part)
-        if content_size is not None and content_size > 50e3:
+        if content_size is not None and content_size > 100e3:
             print('Removing attachment {} with size {:.0f} kB.'.format(attachment_name, content_size / 1e3))
             store_filename = store_attachment(part, attachment_name, filename, path, msg_date, msg_from)
             payload = parent.get_payload()
@@ -63,7 +62,6 @@ def parse_attachment(part):
     if attachment_name is None:
         attachment_name = create_default_name(part)
     if attachment_name is None:
-        print('Got some more weirdness')
         return None, None
     if attachment_name.endswith('.eml'):
         print('Storing .eml files not supported, skipping {}.'.format(attachment_name))
@@ -77,6 +75,8 @@ def parse_attachment(part):
 def create_default_name(part):
     for tup in part._headers:
         if tup[0] == 'Content-Type':
+            """tup[1][6:] extracts 'png' from 'image/png' for example. Sometimes the value is image/x-png...
+               Somehow, the 'x-' doesn't pose a problem. Not sure how it gets removed."""
             return part.get_content_disposition() + '-' + str(uuid.uuid4()) + '.' + tup[1][6:]
 
 
@@ -103,9 +103,8 @@ def get_storage_filename(attachment_name, msg_date, msg_from):
     # Assume there is an email address in there:
     from_address = re.search(r'([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)', msg_from).group(0)
     res = '{} from-{} {}'.format(date_str, from_address, attachment_name)
-    # # Replace characters not suitable for a filename:
-    # return re.sub(r'[<>:"\/\|\?\*\t\n\r\0]', r'-', res)
-    return res
+    # Replace characters not suitable for a filename:
+    return re.sub(r'[<>:"\/\|\?\*\t\n\r\0]', r'-', res)
 
 
 def get_replace_text(attachment_name, store_filename, content_size):
@@ -115,5 +114,5 @@ def get_replace_text(attachment_name, store_filename, content_size):
 
 
 if __name__ == '__main__':
-    main(path='/home/ben/Downloads/Takeout/Mail')
+    main(path='C:\\Users\\Frank\\Downloads\\takeout')
 
