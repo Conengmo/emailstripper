@@ -4,6 +4,7 @@ import os
 import datetime as dt
 import dateutil.parser
 import re
+import uuid
 
 
 def main(path, filename=None):
@@ -41,13 +42,13 @@ def walk_over_parts(parent, count, path, filename, msg_date, msg_from):
             continue
         if part.is_multipart():
             count = walk_over_parts(part, count, path, filename, msg_date, msg_from)
-            return count
+            continue
         content_size, attachment_name = parse_attachment(part)
         if content_size is not None and content_size > 100e3:
             print('Removing attachment {} with size {:.0f} kB.'.format(attachment_name, content_size / 1e3))
-            store_attachment(part, attachment_name, filename, path, msg_date, msg_from)
+            store_filename = store_attachment(part, attachment_name, filename, path, msg_date, msg_from)
             payload = parent.get_payload()
-            payload[i] = get_replace_text(attachment_name, content_size)
+            payload[i] = get_replace_text(attachment_name, store_filename, content_size)
             parent.set_payload(payload)
             count += 1
     return count
@@ -58,6 +59,10 @@ def parse_attachment(part):
     if not part.get_content_disposition() in ['inline', 'attachment']:
         return None, None
     attachment_name = part.get_filename()
+    if attachment_name is None:
+        attachment_name = create_default_name(part)
+    if attachment_name is None:
+        return None, None
     if attachment_name.endswith('.eml'):
         print('Storing .eml files not supported, skipping {}.'.format(attachment_name))
         return None, None
@@ -65,6 +70,14 @@ def parse_attachment(part):
     assert type(content) is str
     content_size = len(content)
     return content_size, attachment_name
+
+
+def create_default_name(part):
+    for tup in part._headers:
+        if tup[0] == 'Content-Type':
+            """tup[1][6:] extracts 'png' from 'image/png' for example. Sometimes the value is image/x-png...
+               Somehow, the 'x-' doesn't pose a problem. Not sure how it gets removed."""
+            return part.get_content_disposition() + '-' + str(uuid.uuid4()) + '.' + tup[1][6:]
 
 
 def store_attachment(part, attachment_name, filename, base_path, msg_date, msg_from):
@@ -77,6 +90,7 @@ def store_attachment(part, attachment_name, filename, base_path, msg_date, msg_f
     content = part.get_payload(decode=True)
     with open(os.path.join(path, store_filename), 'wb') as f:
         f.write(content)
+    return store_filename
 
 
 def get_storage_filename(attachment_name, msg_date, msg_from):
@@ -93,10 +107,10 @@ def get_storage_filename(attachment_name, msg_date, msg_from):
     return re.sub(r'[<>:"\/\|\?\*\t\n\r\0]', r'-', res)
 
 
-def get_replace_text(attachment_name, content_size):
+def get_replace_text(attachment_name, store_filename, content_size):
     """Return a message object to replace an attachment with."""
-    return email.mime.text.MIMEText('Attachment "{}" with size {:.0f} kB has been removed ({}).\r\n'
-                                    .format(attachment_name, content_size / 1e3, dt.date.today()))
+    return email.mime.text.MIMEText('Attachment "{}" with size {:.0f} kB has been removed ({}). Storage filename: {}\r\n'
+                                    .format(attachment_name, content_size / 1e3, dt.date.today(), store_filename))
 
 
 if __name__ == '__main__':
